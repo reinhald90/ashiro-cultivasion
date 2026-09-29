@@ -1,25 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function BreakthroughScene({ result, onDone }) {
-  const [phase, setPhase] = useState("charge"); // charge → burst → reveal
+  const [phase, setPhase] = useState("charge");
+  const onDoneRef = useRef(onDone);
+
+  // Simpan referensi terbaru TANPA trigger effect
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase("burst"), 800);
     const t2 = setTimeout(() => setPhase("reveal"), 1800);
-    const t3 = setTimeout(() => onDone(), 4200);
+    const t3 = setTimeout(() => onDoneRef.current(), 4200);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
     };
-  }, [onDone]);
+  }, []); // ← dependency KOSONG, hanya jalan sekali saat mount
 
   return (
     <div className="bt-scene" data-phase={phase}>
-      {/* Layer 1: Backdrop */}
       <div className="bt-backdrop" />
 
-      {/* Layer 2: Partikel Qi */}
       <div className="bt-particles">
         {Array.from({ length: 24 }).map((_, i) => (
           <span
@@ -34,7 +38,6 @@ export default function BreakthroughScene({ result, onDone }) {
         ))}
       </div>
 
-      {/* Layer 3: Karakter dengan efek */}
       <div className="bt-char-wrap">
         <div className="bt-halo" />
         <img
@@ -45,7 +48,6 @@ export default function BreakthroughScene({ result, onDone }) {
         <div className="bt-shockwave" />
       </div>
 
-      {/* Layer 4: Teks */}
       <div className="bt-text">
         {phase !== "charge" && (
           <>
@@ -56,7 +58,6 @@ export default function BreakthroughScene({ result, onDone }) {
         )}
       </div>
 
-      {/* Layer 5: Flash */}
       <div className="bt-flash" />
     </div>
   );

@@ -1,6 +1,9 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  getFirestore,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,4 +17,17 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Firestore dengan long-polling (lebih stabil di mobile & network tertentu)
+let _db;
+try {
+  _db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    useFetchStreams: false,
+  });
+  console.log("[firebase] Firestore init with long-polling");
+} catch (err) {
+  console.warn("[firebase] initializeFirestore fallback:", err?.message);
+  _db = getFirestore(app);
+}
+export const db = _db;

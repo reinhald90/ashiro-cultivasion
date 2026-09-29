@@ -18,7 +18,7 @@ import { getRealm, getSubLabel } from "../game/data/realms.js";
 import { fmt, fmtAge, fmtTime } from "../game/format.js";
 import BreakthroughScene from "../components/BreakthroughScene.jsx";
 
-const AUTOSAVE_MS = 10000;
+const AUTOSAVE_MS = 5000;
 
 export default function Game() {
   const { user, profile } = useAuth();
@@ -51,6 +51,7 @@ export default function Game() {
       if (off.gained > 0) setOfflineInfo(off);
 
       setPlayer(p);
+      playerRef.current = p;
     })();
   }, [user, profile]);
 
@@ -77,15 +78,20 @@ export default function Game() {
     return () => clearInterval(id);
   }, [user]);
 
-  // ===== Save saat keluar tab =====
+  // ===== Save saat keluar tab / background =====
   useEffect(() => {
-    const onUnload = () => {
-      if (user && playerRef.current) {
-        saveGame(user.uid, playerRef.current);
-      }
+    const saveNow = () => {
+      if (user && playerRef.current) saveGame(user.uid, playerRef.current);
     };
-    window.addEventListener("beforeunload", onUnload);
-    return () => window.removeEventListener("beforeunload", onUnload);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    window.addEventListener("beforeunload", saveNow);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", saveNow);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [user]);
 
   // ===== Helpers =====
@@ -99,6 +105,8 @@ export default function Game() {
     const next = { ...player };
     const result = attemptBreakthrough(next);
     setPlayer(next);
+    playerRef.current = next;
+    if (user) saveGame(user.uid, next);
 
     if (result.ok) {
       setBtScene({
@@ -244,6 +252,8 @@ export default function Game() {
         <BreakthroughScene
           result={btScene}
           onDone={() => {
+            if (user && playerRef.current)
+              saveGame(user.uid, playerRef.current);
             showToast(`Berhasil! ${btScene.realmName}`, "success");
             setBtScene(null);
           }}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext.jsx";
+import BreakthroughScene from "../components/BreakthroughScene.jsx";
 import { logoutUser } from "../firebase/auth.js";
 import { loadGame, saveGame } from "../firebase/saves.js";
 import { initPlayer } from "../game/state.js";
@@ -16,6 +17,7 @@ export default function Game() {
   const [player, setPlayer] = useState(null);
   const [meditating, setMeditating] = useState(true);
   const [toast, setToast] = useState(null);
+  const [btScene, setBtScene] = useState(null);
   const [offlineInfo, setOfflineInfo] = useState(null);
 
   const playerRef = useRef(null);

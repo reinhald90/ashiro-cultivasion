@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import BreakthroughScene from "../components/BreakthroughScene.jsx";
 import { logoutUser } from "../firebase/auth.js";
 import { loadGame, saveGame } from "../firebase/saves.js";
 import { initPlayer } from "../game/state.js";
-import { meditate, qiPerSecond, canBreakthrough, tickAge } from "../game/systems/cultivation.js";
-import { attemptBreakthrough, breakthroughChance } from "../game/systems/breakthrough.js";
+import {
+  meditate,
+  qiPerSecond,
+  canBreakthrough,
+  tickAge,
+} from "../game/systems/cultivation.js";
+import {
+  attemptBreakthrough,
+  breakthroughChance,
+} from "../game/systems/breakthrough.js";
 import { applyOfflineProgress } from "../game/systems/offline.js";
 import { getRealm, getSubLabel } from "../game/data/realms.js";
 import { fmt, fmtAge, fmtTime } from "../game/format.js";
+import BreakthroughScene from "../components/BreakthroughScene.jsx";
 
 const AUTOSAVE_MS = 10000;
 
@@ -17,16 +25,21 @@ export default function Game() {
   const [player, setPlayer] = useState(null);
   const [meditating, setMeditating] = useState(true);
   const [toast, setToast] = useState(null);
-  const [btScene, setBtScene] = useState(null);
   const [offlineInfo, setOfflineInfo] = useState(null);
+  const [btScene, setBtScene] = useState(null);
 
   const playerRef = useRef(null);
   const meditatingRef = useRef(true);
 
-  useEffect(() => { playerRef.current = player; }, [player]);
-  useEffect(() => { meditatingRef.current = meditating; }, [meditating]);
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
 
-  // Load save + offline progress
+  useEffect(() => {
+    meditatingRef.current = meditating;
+  }, [meditating]);
+
+  // ===== Load save + offline progress =====
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -41,7 +54,7 @@ export default function Game() {
     })();
   }, [user, profile]);
 
-  // Game tick
+  // ===== Game tick (1 detik) =====
   useEffect(() => {
     const id = setInterval(() => {
       setPlayer((p) => {
@@ -55,7 +68,7 @@ export default function Game() {
     return () => clearInterval(id);
   }, []);
 
-  // Autosave
+  // ===== Autosave =====
   useEffect(() => {
     if (!user) return;
     const id = setInterval(() => {
@@ -64,14 +77,10 @@ export default function Game() {
     return () => clearInterval(id);
   }, [user]);
 
-  // Save saat keluar
+  // ===== Save saat keluar tab =====
   useEffect(() => {
     const onUnload = () => {
       if (user && playerRef.current) {
-        navigator.sendBeacon?.(
-          "/api/save", // fallback; real save tetap via Firestore di bawah
-          new Blob([JSON.stringify({})], { type: "application/json" })
-        );
         saveGame(user.uid, playerRef.current);
       }
     };
@@ -79,6 +88,7 @@ export default function Game() {
     return () => window.removeEventListener("beforeunload", onUnload);
   }, [user]);
 
+  // ===== Helpers =====
   const showToast = (msg, type = "info") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
@@ -89,7 +99,16 @@ export default function Game() {
     const next = { ...player };
     const result = attemptBreakthrough(next);
     setPlayer(next);
-    showToast(result.msg, result.ok ? "success" : "danger");
+
+    if (result.ok) {
+      setBtScene({
+        realmName: result.realmName,
+        levelLabel: result.levelLabel,
+        type: result.type,
+      });
+    } else {
+      showToast(result.msg, "danger");
+    }
   };
 
   const handleLogout = async () => {
@@ -97,6 +116,7 @@ export default function Game() {
     await logoutUser();
   };
 
+  // ===== Loading =====
   if (!player) {
     return (
       <div className="game-loading">
@@ -106,6 +126,7 @@ export default function Game() {
     );
   }
 
+  // ===== Derived values =====
   const realm = getRealm(player.realm);
   const subLabel = getSubLabel(player.realm, player.subLevel);
   const qiPct = Math.min(100, (player.qi / player.maxQi) * 100);
@@ -197,9 +218,7 @@ export default function Game() {
       </div>
 
       {/* TOAST */}
-      {toast && (
-        <div className={`toast toast-${toast.type}`}>{toast.msg}</div>
-      )}
+      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
 
       {/* OFFLINE MODAL */}
       {offlineInfo && (
@@ -210,11 +229,25 @@ export default function Game() {
               Kamu bermeditasi selama <b>{fmtTime(offlineInfo.seconds)}</b> dan
               mendapatkan <b>{fmt(offlineInfo.gained)} Qi</b>.
             </p>
-            <button className="btn btn-primary" onClick={() => setOfflineInfo(null)}>
+            <button
+              className="btn btn-primary"
+              onClick={() => setOfflineInfo(null)}
+            >
               Lanjutkan
             </button>
           </div>
         </div>
+      )}
+
+      {/* BREAKTHROUGH SCENE */}
+      {btScene && (
+        <BreakthroughScene
+          result={btScene}
+          onDone={() => {
+            showToast(`Berhasil! ${btScene.realmName}`, "success");
+            setBtScene(null);
+          }}
+        />
       )}
     </div>
   );

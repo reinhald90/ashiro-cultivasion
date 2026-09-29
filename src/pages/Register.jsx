@@ -36,7 +36,7 @@ export default function Register() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
-          <img src="/logo.svg" alt="Ashiro" />
+          <img src="/logo.png" alt="Ashiro" />
           <div>
             <h1>Ashiro Cultivation</h1>
             <span>Idle Xianxia RPG</span>

@@ -43,15 +43,28 @@ export default function Game() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const saved = await loadGame(user.uid);
-      const p = initPlayer(saved);
-      if (!saved) p.name = profile?.username || "Cultivator";
+      try {
+        console.log("[Game] Loading save for", user.uid);
+        const saved = await loadGame(user.uid);
+        const p = initPlayer(saved);
+        if (!saved) p.name = profile?.username || "Cultivator";
 
-      const off = applyOfflineProgress(p);
-      if (off.gained > 0) setOfflineInfo(off);
+        const off = applyOfflineProgress(p);
+        if (off.gained > 0) setOfflineInfo(off);
 
-      setPlayer(p);
-      playerRef.current = p;
+        setPlayer(p);
+        playerRef.current = p;
+        console.log("[Game] Player ready:", p);
+      } catch (err) {
+        console.error("[Game] LOAD FAILED:", err);
+        setToast({
+          msg: `Load gagal: ${err.code || err.message || err}`,
+          type: "danger",
+        });
+        const p = initPlayer(null);
+        setPlayer(p);
+        playerRef.current = p;
+      }
     })();
   }, [user, profile]);
 
@@ -72,8 +85,14 @@ export default function Game() {
   // ===== Autosave =====
   useEffect(() => {
     if (!user) return;
-    const id = setInterval(() => {
-      if (playerRef.current) saveGame(user.uid, playerRef.current);
+    const id = setInterval(async () => {
+      if (!playerRef.current) return;
+      try {
+        await saveGame(user.uid, playerRef.current);
+      } catch (err) {
+        console.error("[Game] SAVE FAILED:", err);
+        showToast(`Save gagal: ${err.code || err.message}`, "danger");
+      }
     }, AUTOSAVE_MS);
     return () => clearInterval(id);
   }, [user]);
@@ -81,7 +100,11 @@ export default function Game() {
   // ===== Save saat keluar tab / background =====
   useEffect(() => {
     const saveNow = () => {
-      if (user && playerRef.current) saveGame(user.uid, playerRef.current);
+      if (user && playerRef.current) {
+        saveGame(user.uid, playerRef.current).catch((err) => {
+          console.error("[Game] SAVE-ON-EXIT FAILED:", err);
+        });
+      }
     };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") saveNow();
@@ -97,16 +120,22 @@ export default function Game() {
   // ===== Helpers =====
   const showToast = (msg, type = "info") => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const handleBreakthrough = () => {
+  const handleBreakthrough = async () => {
     if (!player) return;
     const next = { ...player };
     const result = attemptBreakthrough(next);
     setPlayer(next);
     playerRef.current = next;
-    if (user) saveGame(user.uid, next);
+
+    try {
+      if (user) await saveGame(user.uid, next);
+    } catch (err) {
+      console.error("[Game] BREAKTHROUGH SAVE FAILED:", err);
+      showToast(`Save gagal: ${err.code || err.message}`, "danger");
+    }
 
     if (result.ok) {
       setBtScene({
@@ -120,7 +149,13 @@ export default function Game() {
   };
 
   const handleLogout = async () => {
-    if (user && playerRef.current) await saveGame(user.uid, playerRef.current);
+    if (user && playerRef.current) {
+      try {
+        await saveGame(user.uid, playerRef.current);
+      } catch (err) {
+        console.error("[Game] LOGOUT SAVE FAILED:", err);
+      }
+    }
     await logoutUser();
   };
 
@@ -251,9 +286,14 @@ export default function Game() {
       {btScene && (
         <BreakthroughScene
           result={btScene}
-          onDone={() => {
-            if (user && playerRef.current)
-              saveGame(user.uid, playerRef.current);
+          onDone={async () => {
+            if (user && playerRef.current) {
+              try {
+                await saveGame(user.uid, playerRef.current);
+              } catch (err) {
+                console.error("[Game] POST-BT SAVE FAILED:", err);
+              }
+            }
             showToast(`Berhasil! ${btScene.realmName}`, "success");
             setBtScene(null);
           }}

@@ -1,15 +1,13 @@
 import { getRealm, REALMS } from "../data/realms.js";
+import { getSubLabel } from "../data/realms.js";
 
-/** Hitung chance sukses breakthrough */
 export function breakthroughChance(player) {
-  // Makin tinggi realm, makin susah
   const base = 0.85;
   const penalty = player.realm * 0.12;
   const subBonus = player.subLevel * 0.02;
   return Math.max(0.15, Math.min(0.95, base - penalty + subBonus));
 }
 
-/** Coba naik realm */
 export function attemptBreakthrough(player) {
   const realm = getRealm(player.realm);
   if (player.qi < player.maxQi) {
@@ -20,7 +18,7 @@ export function attemptBreakthrough(player) {
   const roll = Math.random();
 
   if (roll < chance) {
-    // Naik sub-level dulu
+    // === Naik sub-level ===
     if (player.subLevel + 1 < realm.subLevels) {
       player.subLevel += 1;
       player.maxQi = realm.qiPerSub * (player.subLevel + 1);
@@ -28,11 +26,13 @@ export function attemptBreakthrough(player) {
       return {
         ok: true,
         type: "sub",
-        msg: `Naik ke ${realm.name} · ${player.subLevel + 1}`,
+        msg: `Naik ke ${realm.name} · ${getSubLabel(player.realm, player.subLevel)}`,
+        realmName: realm.name,
+        levelLabel: getSubLabel(player.realm, player.subLevel),
       };
     }
 
-    // Naik realm besar
+    // === Naik realm besar ===
     if (player.realm + 1 >= REALMS.length) {
       return { ok: false, msg: "Kamu sudah di puncak kultivasi." };
     }
@@ -45,13 +45,15 @@ export function attemptBreakthrough(player) {
     player.lifespan = next.lifespan;
     player.maxHp += 50;
     player.hp = player.maxHp;
+
     return {
       ok: true,
       type: "realm",
       msg: `🎉 Breakthrough ke ${next.name}!`,
+      realmName: next.name,
+      levelLabel: getSubLabel(player.realm, 0),
     };
   } else {
-    // Gagal → kehilangan sebagian Qi
     const loss = Math.floor(player.qi * 0.5);
     player.qi -= loss;
     return {

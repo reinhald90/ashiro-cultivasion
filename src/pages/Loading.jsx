@@ -5,7 +5,9 @@ export default function Loading() {
         <img src="/logo.png" alt="Ashiro" />
         <span>Ashiro Cultivation</span>
       </div>
-      <div className="loading-bar"><div className="loading-bar-fill" /></div>
+      <div className="loading-bar">
+        <div className="loading-bar-fill" />
+      </div>
       <p className="loading-text">Memuat dunia kultivasi...</p>
     </div>
   );

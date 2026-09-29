@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { watchAuth } from "../firebase/auth.js";
+import { watchAuth, handleRedirectResult } from "../firebase/auth.js";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/config.js";
 
@@ -11,17 +11,30 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = watchAuth(async (u) => {
-      setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) setProfile(snap.data());
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-    return unsub;
+    let unsub = () => {};
+
+    (async () => {
+      // 1. Tangkap hasil redirect (mobile) — jika ada, tunggu dulu
+      await handleRedirectResult();
+
+      // 2. Baru pasang watcher auth
+      unsub = watchAuth(async (u) => {
+        setUser(u);
+        if (u) {
+          try {
+            const snap = await getDoc(doc(db, "users", u.uid));
+            if (snap.exists()) setProfile(snap.data());
+          } catch (err) {
+            console.error("Gagal ambil profile:", err);
+          }
+        } else {
+          setProfile(null);
+        }
+        setLoading(false);
+      });
+    })();
+
+    return () => unsub();
   }, []);
 
   return (

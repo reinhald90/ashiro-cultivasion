@@ -50,7 +50,8 @@ export default function Register() {
           <div className="field">
             <label>Username</label>
             <input
-              required value={username}
+              required
+              value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Pilih nama dao kamu"
               maxLength={16}
@@ -59,21 +60,27 @@ export default function Register() {
           <div className="field">
             <label>Email</label>
             <input
-              type="email" required value={email}
+              type="email"
+              required
+              value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="field">
             <label>Password</label>
             <input
-              type="password" required value={password}
+              type="password"
+              required
+              value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           <div className="field">
             <label>Konfirmasi Password</label>
             <input
-              type="password" required value={confirm}
+              type="password"
+              required
+              value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
             />
           </div>
